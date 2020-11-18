@@ -1,3 +1,5 @@
 # CICFLOWMETER
-you can use it refer to this blog
-https://blog.csdn.net/u010916338/article/details/84397495
+usage: import jnetpcap in lib
+
+
+new features: add ip id , window size , window scale, packet size in flow features
