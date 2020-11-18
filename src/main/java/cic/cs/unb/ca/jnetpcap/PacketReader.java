@@ -33,7 +33,6 @@ public class PacketReader {
 	private L2TP l2tp;
 	private PcapHeader hdr;
 	private JBuffer buf;
-	
 	private boolean readIP6;
 	private boolean readIP4;
 	private String file;
@@ -70,7 +69,8 @@ public class PacketReader {
 			this.ipv6 = new Ip6();
 			this.l2tp = new L2TP();
 			hdr = new PcapHeader(JMemory.POINTER);
-			buf = new JBuffer(JMemory.POINTER);		
+			buf = new JBuffer(JMemory.POINTER);
+
 		}		
 	}
 	
@@ -120,12 +120,17 @@ public class PacketReader {
 				packetInfo.setDst(this.ipv4.destination());
 				//packetInfo.setTimeStamp(packet.getCaptureHeader().timestampInMillis());
 				packetInfo.setTimeStamp(packet.getCaptureHeader().timestampInMicros());
-				
+				packetInfo.setIP_ID(ipv4.id());
+				//ipv4.offset();
+				packetInfo.setDscp(ipv4.tos()>>2);
 				if(this.firstPacket == 0L)
 					this.firstPacket = packet.getCaptureHeader().timestampInMillis();
 				this.lastPacket = packet.getCaptureHeader().timestampInMillis();
-
+				packetInfo.setIPPart_length(ipv4.length()-ipv4.hlen()*4);
 				if(packet.hasHeader(this.tcp)){
+					packetInfo.setTcp_seq(tcp.seq());
+					packetInfo.setWin_size(tcp.window());
+					packetInfo.setWin_scale(tcp.windowScaled());
 					packetInfo.setTCPWindow(tcp.window());
 					packetInfo.setSrcPort(tcp.source());
 					packetInfo.setDstPort(tcp.destination());
@@ -188,9 +193,13 @@ public class PacketReader {
 				packetInfo = new BasicPacketInfo(this.generator);
 				packetInfo.setSrc(this.ipv6.source());
 				packetInfo.setDst(this.ipv6.destination());
-				packetInfo.setTimeStamp(packet.getCaptureHeader().timestampInMillis());			
-				
-				if(packet.hasHeader(this.tcp)){						
+				packetInfo.setTimeStamp(packet.getCaptureHeader().timestampInMillis());
+				packetInfo.setIPPart_length(ipv6.length()-40);
+				if(packet.hasHeader(this.tcp)){
+					packetInfo.setTcp_seq(tcp.seq());
+					packetInfo.setWin_size(tcp.window());
+					packetInfo.setWin_scale(tcp.windowScaled());
+					packetInfo.setTCPWindow(tcp.window());
 					packetInfo.setSrcPort(tcp.source());
 					packetInfo.setDstPort(tcp.destination());
 					packetInfo.setPayloadBytes(tcp.getPayloadLength());
@@ -359,8 +368,12 @@ public class PacketReader {
 				packetInfo.setSrc(protocol.getIpv6().source());
 				packetInfo.setDst(protocol.getIpv6().destination());
 				packetInfo.setTimeStamp(packet.getCaptureHeader().timestampInMillis());			
-				
+				packetInfo.setIPPart_length(protocol.getIpv6().length()-40);
 				if(packet.hasHeader(protocol.getTcp())){
+					packetInfo.setTcp_seq(protocol.getTcp().seq());
+					packetInfo.setWin_size(protocol.getTcp().window());
+					packetInfo.setWin_scale(protocol.getTcp().windowScaled());
+					packetInfo.setTCPWindow(protocol.getTcp().window()); // to do
 					packetInfo.setSrcPort(protocol.getTcp().source());
 					packetInfo.setDstPort(protocol.getTcp().destination());
 					packetInfo.setPayloadBytes(protocol.getTcp().getPayloadLength());
@@ -404,12 +417,18 @@ public class PacketReader {
 				packetInfo.setDst(protocol.getIpv4().destination());
 				//packetInfo.setTimeStamp(packet.getCaptureHeader().timestampInMillis());
 				packetInfo.setTimeStamp(packet.getCaptureHeader().timestampInMicros());
-				
+				packetInfo.setIP_ID(protocol.getIpv4().id());
+				packetInfo.setDscp(protocol.getIpv4().tos()-protocol.getIpv4().tos_ECN());
+
+				packetInfo.setIPPart_length(protocol.getIpv4().length()-protocol.getIpv4().hlen()*4);
 				/*if(this.firstPacket == 0L)
 					this.firstPacket = packet.getCaptureHeader().timestampInMillis();
 				this.lastPacket = packet.getCaptureHeader().timestampInMillis();*/
 
 				if(packet.hasHeader(protocol.getTcp())){
+					packetInfo.setTcp_seq(protocol.getTcp().seq());
+					packetInfo.setWin_size(protocol.getTcp().window());
+					packetInfo.setWin_scale(protocol.getTcp().windowScaled());
 					packetInfo.setTCPWindow(protocol.getTcp().window());
 					packetInfo.setSrcPort(protocol.getTcp().source());
 					packetInfo.setDstPort(protocol.getTcp().destination());

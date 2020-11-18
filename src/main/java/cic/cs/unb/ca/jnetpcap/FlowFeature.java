@@ -94,7 +94,34 @@ public enum FlowFeature {
     idl_max("Idle Max","IlMA"),					//83
     idl_min("Idle Min","IlMI"),					//84
 	
-	Label("Label","LBL",new String[]{"CIC"});					//85
+	Label("Label","LBL",new String[]{"CIC"}),
+    DSCP("DSCP","DSCP"), // 86
+    //segment_cnt("Segment FLAG Count","SegCT"), // 87
+    win_size("Window Size","WinSize"), // 88
+    win_scale("Window Scale","WinScale"),
+
+    TCP_seq_mean("TCP Sequent Number Mean","TCPSeqMean"),
+    TCP_seq_max("TCP Sequent Number Max","TCPSeqMax"),
+    TCP_seq_min("TCP Sequent Number Min","TCPSeqMin"),
+
+    TCP_ID_mean("IP ID Mean","TCPSeqMean"),
+    TCP_ID_max("IP ID Max","TCPSeqMax"),
+    TCP_ID_min("IP ID Min","TCPSeqMin"),
+
+    TCP_total_length_mean("Pkt Payload Mean","PktTotalLenMean"),
+    TCP_total_length_max("Pkt Payload Max","PktTotalLenMax"),
+    TCP_total_length_min("Pkt Payload Min","PktTotalLenMin"),
+
+    TCP_fwd_total_length_mean("Pkt Fwd Payload Mean","PktFwdTotalLenMean"),
+    TCP_fwd_total_length_max("Pkt Fwd Payload Max","PktFwdTotalLenMax"),
+    TCP_fwd_total_length_min("Pkt Fwd Payload Min","PktFwdTotalLenMin"),
+
+    TCP_bwd_total_length_mean("Pkt Bwd Payload Mean","PktBwdTotalLenMean"),
+    TCP_bwd_total_length_max("Pkt Bwd Payload Max","PktBwdTotalLenMax"),
+    TCP_bwd_total_length_min("Pkt Bwd Payload Min","PktBwdTotalLenMin")
+
+
+    ;					//85
 
 
 	protected static final Logger logger = LoggerFactory.getLogger(FlowFeature.class);

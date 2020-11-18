@@ -28,9 +28,72 @@ public class BasicPacketInfo {
 	private	   int TCPWindow=-1;
 	private	   long headerBytes;
 	private int payloadPacket=0;
+	private long tcp_seq;
+	private int Dscp;
+	private int win_size;
+	private int win_scale;
+	private int IP_ID;
+	private long rawTcpSeq;
+	private int IPPart_length;
+
+	public int getIPPart_length() {
+		return IPPart_length;
+	}
+
+	public void setIPPart_length(int IPPart_length) {
+		this.IPPart_length = IPPart_length;
+	}
+
+	public long getRawTcpSeq() {
+		return rawTcpSeq;
+	}
+
+	public void setRawTcpSeq(long rawTcpSeq) {
+		this.rawTcpSeq = rawTcpSeq;
+	}
+
+	public long getTcp_seq() {
+		return tcp_seq;
+	}
+
+	public void setTcp_seq(long tcp_seq) {
+		this.tcp_seq = tcp_seq;
+	}
+
+	public int getDscp() {
+		return Dscp;
+	}
+
+	public void setDscp(int dscp) {
+		Dscp = dscp;
+	}
+
+	public int getWin_size() {
+		return win_size;
+	}
+
+	public void setWin_size(int win_size) {
+		this.win_size = win_size;
+	}
+
+	public int getWin_scale() {
+		return win_scale;
+	}
+
+	public void setWin_scale(int win_scale) {
+		this.win_scale = win_scale;
+	}
+
+	public int getIP_ID() {
+		return IP_ID;
+	}
+
+	public void setIP_ID(int IP_ID) {
+		this.IP_ID = IP_ID;
+	}
 
 	public BasicPacketInfo(byte[] src, byte[] dst, int srcPort, int dstPort,
-			int protocol, long timeStamp, IdGenerator generator) {
+						   int protocol, long timeStamp, IdGenerator generator) {
 		super();
 		this.id = generator.nextId();
 		this.src = src;

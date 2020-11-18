@@ -51,11 +51,30 @@ public class BasicFlow {
 	private     SummaryStatistics flowLengthStats = null;
     private     SummaryStatistics flowActive = null;
     private     SummaryStatistics flowIdle = null;
-    
+
+    private     SummaryStatistics  IP_ID;
+    private     SummaryStatistics  TCP_SEQ;
+    private     SummaryStatistics  TCP_total_length;
+	private     SummaryStatistics  TCP_fwd_total_length;
+	private     SummaryStatistics  TCP_bwd_total_length;
+
     private	    long   flowLastSeen;
     private     long   forwardLastSeen;
     private     long   backwardLastSeen;
-    
+
+	private int DSCP;
+	private int win_size;
+	private int win_scale;
+	private long min_seq_id = Integer.MAX_VALUE;
+	private long max_seq_id = Integer.MIN_VALUE;
+	private long mean_seq_id;
+	private long min_IP_id = Integer.MAX_VALUE;
+	private long max_IP_id = Integer.MIN_VALUE;
+	private long mean_IP_id;
+	private long max_fwd_flow_length;
+	private long max_bwd_flow_length;
+	private long max_flow_length;
+	private long pre_tcp_seq;
 
 	public BasicFlow(boolean isBidirectional,BasicPacketInfo packet, byte[] flowSrc, byte[] flowDst, int flowSrcPort, int flowDstPort) {
 		super();
@@ -93,6 +112,11 @@ public class BasicFlow {
 		this.flowLengthStats = new SummaryStatistics();
 		this.fwdPktStats = new SummaryStatistics();
 		this.bwdPktStats =  new SummaryStatistics();
+		this.IP_ID = new SummaryStatistics();
+		this.TCP_SEQ = new SummaryStatistics();
+		this.TCP_total_length = new SummaryStatistics();
+		this.TCP_fwd_total_length = new SummaryStatistics();
+		this.TCP_bwd_total_length = new SummaryStatistics();
 		this.flagCounts = new HashMap<String, MutableInt>();
 		initFlags();
 		this.forwardBytes = 0L;
@@ -107,7 +131,14 @@ public class BasicFlow {
 		this.bURG_cnt=0;
 		this.fHeaderBytes=0L;
 		this.bHeaderBytes=0L;
-
+		this.DSCP = 0;
+		this.win_size = 0;
+		this.win_scale = 0;
+		this.mean_IP_id = 0;
+		this.mean_seq_id = 0;
+		this.max_fwd_flow_length = Long.MIN_VALUE;
+		this.max_bwd_flow_length = Long.MIN_VALUE;
+		this.max_flow_length = Long.MIN_VALUE;
 	}
 	
 	
@@ -119,8 +150,25 @@ public class BasicFlow {
 		this.flowLastSeen = packet.getTimeStamp();
 		this.startActiveTime = packet.getTimeStamp();
 		this.endActiveTime = packet.getTimeStamp();
+		this.pre_tcp_seq = packet.getTcp_seq();
+
 		this.flowLengthStats.addValue((double)packet.getPayloadBytes());
 
+		this.IP_ID.addValue(packet.getIP_ID());
+		this.TCP_SEQ.addValue(packet.getTcp_seq());
+		//this.TCP_total_length.addValue(packet.getTcp_seq()-this.pre_tcp_seq);
+		this.TCP_total_length.addValue(packet.getIPPart_length());
+		this.max_flow_length = Math.max(this.max_flow_length,packet.getPayloadBytes());
+
+		this.win_size = packet.getTCPWindow();
+		this.win_scale = packet.getWin_scale();
+		this.DSCP = packet.getDscp();
+		this.min_seq_id = Math.min(min_seq_id,packet.getTcp_seq());
+		this.max_seq_id = Math.max(max_IP_id,packet.getTcp_seq());
+		this.mean_seq_id = (this.min_seq_id+this.max_seq_id)/2;
+		this.min_IP_id = Math.min(min_IP_id,packet.getIP_ID());
+		this.max_IP_id = Math.max(max_IP_id,packet.getIP_ID());
+		this.mean_IP_id = (this.min_IP_id+this.max_IP_id)/2;
 		if(this.src==null){
 			this.src = packet.getSrc();
 			this.srcPort = packet.getSrcPort();
@@ -131,9 +179,19 @@ public class BasicFlow {
 		}		
 		if(this.src == packet.getSrc()){
 			this.min_seg_size_forward = packet.getHeaderBytes();
+			if(this.win_size!=0) {
+				this.win_scale = Init_Win_bytes_forward / this.win_size;
+			}
+			else{
+				this.win_scale = 0;
+			}
 			Init_Win_bytes_forward = packet.getTCPWindow();
 			this.flowLengthStats.addValue((double)packet.getPayloadBytes());
+			this.max_fwd_flow_length = Math.max(this.max_fwd_flow_length,packet.getPayloadBytes());
 			this.fwdPktStats.addValue((double)packet.getPayloadBytes());
+
+			this.TCP_fwd_total_length.addValue(packet.getIPPart_length());
+
 			this.fHeaderBytes = packet.getHeaderBytes();
 			this.forwardLastSeen = packet.getTimeStamp();
 			this.forwardBytes+=packet.getPayloadBytes();
@@ -146,8 +204,16 @@ public class BasicFlow {
 			}
 		}else{
 			Init_Win_bytes_backward = packet.getTCPWindow();
+			if(this.win_size!=0) {
+				this.win_scale = Init_Win_bytes_backward / this.win_size;
+			}
+			else{
+				this.win_scale = 0;
+			}
 			this.flowLengthStats.addValue((double)packet.getPayloadBytes());
+			this.max_bwd_flow_length = Math.max(this.max_bwd_flow_length,packet.getPayloadBytes());
 			this.bwdPktStats.addValue((double)packet.getPayloadBytes());
+			this.TCP_bwd_total_length.addValue(packet.getIPPart_length());
 			this.bHeaderBytes = packet.getHeaderBytes();
 			this.backwardLastSeen = packet.getTimeStamp();
 			this.backwardBytes+=packet.getPayloadBytes();
@@ -160,7 +226,7 @@ public class BasicFlow {
 			}
 		}
 		this.protocol = packet.getProtocol();
-		this.flowId = packet.getFlowId();		
+		this.flowId = packet.getFlowId();
 	}
     
     public void addPacket(BasicPacketInfo packet){
@@ -170,12 +236,15 @@ public class BasicFlow {
     	long currentTimestamp = packet.getTimeStamp();
     	if(isBidirectional){
 			this.flowLengthStats.addValue((double)packet.getPayloadBytes());
-
+			this.max_flow_length = Math.max(this.max_flow_length,packet.getPayloadBytes());
     		if(Arrays.equals(this.src, packet.getSrc())){
 				if(packet.getPayloadBytes() >=1){
 					this.Act_data_pkt_forward++;
 				}
 				this.fwdPktStats.addValue((double)packet.getPayloadBytes());
+				this.TCP_fwd_total_length.addValue(packet.getIPPart_length());
+				this.max_fwd_flow_length = Math.max(this.max_fwd_flow_length,packet.getPayloadBytes());
+
 				this.fHeaderBytes +=packet.getHeaderBytes();
     			this.forward.add(packet);   
     			this.forwardBytes+=packet.getPayloadBytes();
@@ -186,7 +255,9 @@ public class BasicFlow {
 
     		}else{
 				this.bwdPktStats.addValue((double)packet.getPayloadBytes());
+				this.TCP_bwd_total_length.addValue(packet.getIPPart_length());
 				Init_Win_bytes_backward = packet.getTCPWindow();
+				this.max_bwd_flow_length = Math.max(this.max_bwd_flow_length,packet.getPayloadBytes());
 				this.bHeaderBytes+=packet.getHeaderBytes();
     			this.backward.add(packet);
     			this.backwardBytes+=packet.getPayloadBytes();
@@ -200,7 +271,10 @@ public class BasicFlow {
 				this.Act_data_pkt_forward++;
 			}
 			this.fwdPktStats.addValue((double)packet.getPayloadBytes());
+			this.TCP_fwd_total_length.addValue(packet.getIPPart_length());
+			this.max_fwd_flow_length = Math.max(this.max_fwd_flow_length,packet.getPayloadBytes());
 			this.flowLengthStats.addValue((double)packet.getPayloadBytes());
+			this.max_flow_length = Math.max(this.max_flow_length,packet.getPayloadBytes());
 			this.fHeaderBytes +=packet.getHeaderBytes();
     		this.forward.add(packet);    		
     		this.forwardBytes+=packet.getPayloadBytes();
@@ -211,7 +285,27 @@ public class BasicFlow {
 
     	this.flowIAT.addValue(packet.getTimeStamp()-this.flowLastSeen);
     	this.flowLastSeen = packet.getTimeStamp();
-    	
+
+    	this.win_size = packet.getTCPWindow();
+		this.DSCP = packet.getDscp();
+		this.min_seq_id = Math.min(min_seq_id,packet.getTcp_seq());
+		this.max_seq_id = Math.max(max_IP_id,packet.getTcp_seq());
+		this.mean_seq_id = (this.min_seq_id+this.max_seq_id)/2;
+		this.min_IP_id = Math.min(min_IP_id,packet.getIP_ID());
+		this.max_IP_id = Math.max(max_IP_id,packet.getIP_ID());
+		this.mean_IP_id = (this.min_IP_id+this.max_IP_id)/2;
+		if(this.win_size != 0) {
+			this.win_scale = Init_Win_bytes_backward / this.win_size;
+		}
+		else{
+			this.win_scale = 0;
+		}
+
+		this.IP_ID.addValue(packet.getIP_ID());
+		this.TCP_SEQ.addValue(packet.getTcp_seq());
+		//this.TCP_total_length.addValue(packet.getTcp_seq()-this.pre_tcp_seq);
+		this.TCP_total_length.addValue(packet.getIPPart_length());
+		this.pre_tcp_seq = packet.getTcp_seq();
     }
 
 	public double getfPktsPerSecond(){
@@ -607,7 +701,7 @@ public class BasicFlow {
 		}
 		if(bwdPktStats.getN() > 0L) {
 			dump += this.bwdPktStats.getMax() + ",";
-			dump += this.bwdPktStats.getMin() + ",";
+			dump += this.bwdPktStats.getMin()+ ",";
 			dump += this.bwdPktStats.getMean() + ",";
 			dump += this.bwdPktStats.getStandardDeviation() + ",";
 		}else{
@@ -1230,9 +1324,30 @@ public class BasicFlow {
     		dump.append(0).append(separator);
     	}
 
-        dump.append(getLabel());
+        dump.append(getLabel()).append(separator);
+		dump.append(DSCP).append(separator);
+		dump.append(win_size).append(separator);
+		dump.append(win_scale).append(separator);
 
-    	
+		dump.append(TCP_SEQ.getMean()).append(separator);
+		dump.append(TCP_SEQ.getMax()).append(separator);
+		dump.append(TCP_SEQ.getMin()).append(separator);
+
+		dump.append(IP_ID.getMean()).append(separator);
+		dump.append(IP_ID.getMax()).append(separator);
+		dump.append(IP_ID.getMin()).append(separator);
+
+		dump.append(TCP_total_length.getMean()).append(separator);
+		dump.append(TCP_total_length.getMax()).append(separator);
+		dump.append(TCP_total_length.getMin()).append(separator);
+
+		dump.append(TCP_fwd_total_length.getMean()).append(separator);
+		dump.append(TCP_fwd_total_length.getMax()).append(separator);
+		dump.append(TCP_fwd_total_length.getMin()).append(separator);
+
+		dump.append(TCP_bwd_total_length.getMean()).append(separator);
+		dump.append(TCP_bwd_total_length.getMax()).append(separator);
+		dump.append(TCP_bwd_total_length.getMin()).append(separator);
     	return dump.toString();
     }
 }

@@ -42,11 +42,12 @@ public class Cmd {
         }else {
         }*/
 
-        if (args.length < 1) {
-            logger.info("Please select pcap!");
-            return;
-        }
-        pcapPath = args[0];
+//        if (args.length < 1) {
+//            logger.info("Please select pcap!");
+//            return;
+//        }
+//        pcapPath = args[0];
+        pcapPath = "D:\\BaiduNetdiskDownload\\node4\\traffic-in\\4.pcap";
         File in = new File(pcapPath);
 
         if(in==null || !in.exists()){
@@ -54,11 +55,12 @@ public class Cmd {
             return;
         }
 
-        if (args.length < 2) {
-            logger.info("Please select output folder!");
-            return;
-        }
-        outPath = args[1];
+//        if (args.length < 2) {
+//            logger.info("Please select output folder!");
+//            return;
+//        }
+//        outPath = args[1];
+        outPath = "D:\\BaiduNetdiskDownload\\node4\\traffic-in";
         File out = new File(outPath);
         if (out == null || out.isFile()) {
             logger.info("The out folder does not exist! -> {}",outPath);
